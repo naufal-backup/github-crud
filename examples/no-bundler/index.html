@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>github-crud — No-bundler Example</title>
+
+  <!-- Step 1: load CSS dari CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/github-crud@1/dist/github-crud.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&display=swap" rel="stylesheet"/>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--gc-mono); background: var(--gc-paper); min-height: 100vh; }
+
+    /* ── Nav ── */
+    .nav {
+      background: #0f0f0f;
+      padding: .7rem 1.5rem;
+      display: flex; align-items: center; gap: .5rem;
+      border-bottom: 2px solid #000;
+    }
+    .nav-brand { font-family: var(--gc-serif); font-style: italic; color: #c8401a; font-size: 1rem; margin-right: .5rem; }
+
+    .nav-tab {
+      background: none; border: 1.5px solid #333; color: #888;
+      padding: .32rem .7rem; border-radius: 5px; cursor: pointer;
+      font-family: inherit; font-size: .78rem; transition: all .12s;
+    }
+    .nav-tab:hover  { border-color: #555; color: #ccc; }
+    .nav-tab.active { background: #c8401a; border-color: #c8401a; color: #fff; }
+
+    .nav-user { margin-left: auto; display: flex; align-items: center; gap: .55rem; color: #777; font-size: .75rem; }
+    .nav-user img { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #333; }
+    .nav-logout { background: none; border: none; color: #555; cursor: pointer; font-family: inherit; font-size: .75rem; }
+    .nav-logout:hover { color: #ccc; }
+
+    /* ── Views ── */
+    #view-login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+    #view-app   { display: none; }
+
+    .pane { display: none; padding: 1.5rem; }
+    .pane.active { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN VIEW -->
+<div id="view-login"></div>
+
+<!-- APP VIEW -->
+<div id="view-app">
+  <nav class="nav">
+    <span class="nav-brand">My App</span>
+    <button class="nav-tab active" onclick="switchTab('produk',this)">📦 Produk</button>
+    <button class="nav-tab"        onclick="switchTab('orders',this)">🧾 Orders</button>
+    <button class="nav-tab"        onclick="switchTab('users',this)">👤 Users</button>
+    <div class="nav-user">
+      <img id="av" src="" alt=""/>
+      <span id="un"></span> · <span id="ur"></span>
+      <button class="nav-logout" onclick="gc.logout()">Keluar ⏻</button>
+    </div>
+  </nav>
+  <div id="pane-produk" class="pane active"></div>
+  <div id="pane-orders" class="pane"></div>
+  <div id="pane-users"  class="pane"></div>
+</div>
+
+<!-- Step 2: load library dari CDN -->
+<script type="module">
+import GithubCRUD from 'https://unpkg.com/github-crud@1/dist/github-crud.es.js';
+
+// ═══════════════════════════════════════════
+//  ① KONFIGURASI — isi nilai kamu di sini
+// ═══════════════════════════════════════════
+const CONFIG = {
+  clientId:  'Ov23li_GANTI_CLIENT_ID',
+  workerUrl: 'https://github-crud-auth.namakamu.workers.dev',
+  repoOwner: 'username-github-kamu',
+  repoName:  'nama-repo-data-kamu',
+  roles:     ['admin', 'editor', 'viewer'],
+};
+
+// ═══════════════════════════════════════════
+//  ② DEFINISI COLLECTIONS (tabel-tabel)
+// ═══════════════════════════════════════════
+const PRODUK = {
+  id: 'produk', label: 'Produk', file: 'data/produk.json', icon: '📦',
+  roles: { admin: 'all', editor: 'write', viewer: 'read' },
+  schema: [
+    { key:'id',       label:'ID',          type:'number',  auto:true, readonly:true },
+    { key:'nama',     label:'Nama',        type:'text',    required:true },
+    { key:'harga',    label:'Harga (Rp)',  type:'number',  min:0, required:true },
+    { key:'stok',     label:'Stok',        type:'number',  min:0, default:0 },
+    { key:'kategori', label:'Kategori',    type:'select',
+      options:['Elektronik','Pakaian','Makanan','Lainnya'] },
+    { key:'aktif',    label:'Aktif',       type:'boolean', default:true },
+  ],
+};
+
+const ORDERS = {
+  id: 'orders', label: 'Orders', file: 'data/orders.json', icon: '🧾',
+  timestamps: true,
+  roles: { admin: 'all', editor: 'read', viewer: 'read' },
+  schema: [
+    { key:'id',         label:'ID',          type:'number', auto:true, readonly:true },
+    { key:'pelanggan',  label:'Pelanggan',   type:'text',   required:true },
+    { key:'produk',     label:'Produk',      type:'text',   required:true },
+    { key:'jumlah',     label:'Jumlah',      type:'number', min:1, required:true },
+    { key:'total',      label:'Total (Rp)',  type:'number', required:true },
+    { key:'status',     label:'Status',      type:'select',
+      options:[
+        {value:'pending', label:'⏳ Pending'},
+        {value:'proses',  label:'🔄 Diproses'},
+        {value:'selesai', label:'✅ Selesai'},
+        {value:'batal',   label:'❌ Batal'},
+      ], default:'pending'},
+  ],
+};
+
+const USERS = {
+  id: 'users', label: 'Users', file: 'data/users.json', icon: '👤',
+  roles: { admin: 'all', editor: 'none', viewer: 'none' },
+  schema: [
+    { key:'id',     label:'ID',       type:'number', auto:true, readonly:true },
+    { key:'nama',   label:'Nama',     type:'text',   required:true },
+    { key:'github', label:'GitHub',   type:'text',   required:true,
+      hint:'Username GitHub — dipakai untuk menentukan role saat login' },
+    { key:'role',   label:'Role',     type:'select',
+      options:['admin','editor','viewer'], required:true, default:'viewer' },
+    { key:'aktif',  label:'Aktif',    type:'boolean', default:true },
+  ],
+};
+
+// ═══════════════════════════════════════════
+//  ③ BOOT
+// ═══════════════════════════════════════════
+window.gc = new GithubCRUD({ ...CONFIG, collections: [PRODUK, ORDERS, USERS] });
+
+let session;
+try   { session = await gc.init(); }
+catch (e) {
+  gc.renderLoginCard('#view-login', { errorMessage: e.message });
+  return;
+}
+
+if (!session) {
+  gc.renderLoginCard('#view-login');
+} else {
+  document.getElementById('view-login').style.display = 'none';
+  document.getElementById('view-app').style.display   = 'block';
+  document.getElementById('av').src = gc.user.avatar_url;
+  document.getElementById('un').textContent = `@${gc.user.login}`;
+  document.getElementById('ur').textContent = gc.role;
+
+  gc.mountTable(PRODUK, '#pane-produk');
+  gc.mountTable(ORDERS, '#pane-orders');
+  gc.mountTable(USERS,  '#pane-users');
+}
+
+// ═══════════════════════════════════════════
+//  ④ TAB NAVIGATION
+// ═══════════════════════════════════════════
+window.switchTab = (name, btn) => {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`pane-${name}`).classList.add('active');
+  btn.classList.add('active');
+};
+
+// Optional: listen to status events
+document.addEventListener('gc:status', ({ detail: { state, label } }) => {
+  if (state === 'saving') console.log(`[${label}] Menyimpan ke GitHub…`);
+  if (state === 'ready')  console.log(`[${label}] Siap`);
+});
+</script>
+
+</body>
+</html>

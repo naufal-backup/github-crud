@@ -1,0 +1,5 @@
+[
+  { "id": 1, "nama": "Laptop Pro X",   "harga": 15000000, "stok": 5,  "kategori": "Elektronik", "aktif": true },
+  { "id": 2, "nama": "Wireless Mouse", "harga": 250000,   "stok": 20, "kategori": "Elektronik", "aktif": true },
+  { "id": 3, "nama": "Kaos Polos",     "harga": 85000,    "stok": 50, "kategori": "Pakaian",    "aktif": true }
+]

@@ -1,0 +1,8 @@
+name = "github-crud-auth"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+# Secrets — set via CLI, JANGAN ditulis di sini:
+#   npx wrangler secret put GH_CLIENT_ID
+#   npx wrangler secret put GH_CLIENT_SECRET
+#   npx wrangler secret put ALLOWED_ORIGIN

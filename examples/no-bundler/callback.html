@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Masuk…</title>
+  <link rel="stylesheet" href="https://unpkg.com/github-crud@1/dist/github-crud.css"/>
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--gc-paper); }
+    .box { text-align:center; font-family:var(--gc-mono,'DM Mono',monospace); }
+    .spin { width:40px;height:40px;border:3px solid var(--gc-border,#d4cec0);border-top-color:var(--gc-ink,#0f0f0f);border-radius:50%;animation:s .7s linear infinite;margin:0 auto 1rem; }
+    @keyframes s{to{transform:rotate(360deg)}}
+    p { font-size:.85rem; color:var(--gc-muted,#7a7469); }
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="spin" id="spin"></div>
+  <p id="msg">Sedang masuk ke GitHub…</p>
+</div>
+
+<script type="module">
+  // ← Ganti dengan Workers URL kamu
+  const WORKER_URL = 'https://github-crud-auth.namakamu.workers.dev';
+
+  const code  = new URLSearchParams(location.search).get('code');
+  const error = new URLSearchParams(location.search).get('error');
+  const msg   = document.getElementById('msg');
+
+  if (error) {
+    showErr('GitHub menolak login: ' + (new URLSearchParams(location.search).get('error_description') || error));
+  } else if (!code) {
+    showErr('Kode OAuth tidak ditemukan di URL.');
+  } else {
+    try {
+      const res  = await fetch(`${WORKER_URL}/exchange`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code }),
+      });
+      const data = await res.json();
+
+      if (!data.access_token) throw new Error(data.error || 'Token tidak diterima.');
+
+      sessionStorage.setItem('gc:YOUR_OWNER/YOUR_REPO:token', data.access_token);
+      msg.textContent = 'Berhasil! Mengalihkan…';
+      document.getElementById('spin').style.borderTopColor = '#1a7a42';
+
+      // Kembali ke halaman utama
+      setTimeout(() => location.href = './', 600);
+    } catch (e) {
+      showErr(e.message);
+    }
+  }
+
+  function showErr(text) {
+    document.getElementById('spin').style.display = 'none';
+    msg.innerHTML = `<span style="color:#c8401a">❌ ${text}</span>`;
+  }
+</script>
+</body>
+</html>
