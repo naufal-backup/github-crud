@@ -7,12 +7,14 @@ export class Permissions {
     this.role = userRole;
   }
 
-  _lv(collection) {
+  _level(collection) {
     return LEVEL[collection.roles?.[this.role]] ?? 0;
   }
 
-  canRead(c)   { return this._lv(c) >= LEVEL.read; }
-  canWrite(c)  { return this._lv(c) >= LEVEL.write; }
-  canDelete(c) { return this._lv(c) >= LEVEL.all; }
-  get(c)       { return collection.roles?.[this.role] || 'none'; }
+  canRead(collection)   { return this._level(collection) >= LEVEL.read; }
+  canWrite(collection)  { return this._level(collection) >= LEVEL.write; }
+  canDelete(collection) { return this._level(collection) >= LEVEL.all; }
+
+  /** Kembalikan string permission: 'all' | 'write' | 'read' | 'none' */
+  get(collection) { return collection.roles?.[this.role] || 'none'; }
 }

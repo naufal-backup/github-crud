@@ -1,14 +1,14 @@
 /**
  * github-crud — Cloudflare Workers Auth Proxy
  *
- * Handles the OAuth code → access_token exchange securely.
- * client_secret stays here, never in the browser.
+ * Menukar OAuth code → access_token dengan aman.
+ * client_secret disimpan di sini, tidak pernah menyentuh browser.
  *
  * Setup:
  *   npx wrangler secret put GH_CLIENT_ID
  *   npx wrangler secret put GH_CLIENT_SECRET
  *   npx wrangler secret put ALLOWED_ORIGIN   ← e.g. https://username.github.io
- *   npx wrangler deploy
+ *   npx wrangler deploy worker/index.js --name github-crud-auth
  */
 
 export default {
@@ -22,7 +22,7 @@ export default {
 
     const url = new URL(request.url);
 
-    // POST /exchange  { code: "..." }  →  { access_token: "..." }
+    // POST /exchange  { code }  →  { access_token }
     if (url.pathname === '/exchange' && request.method === 'POST') {
       let code;
       try   { ({ code } = await request.json()); }
@@ -41,10 +41,7 @@ export default {
       });
 
       const data = await ghRes.json();
-
-      if (data.error) {
-        return reply({ error: data.error_description || data.error }, 400, origin);
-      }
+      if (data.error) return reply({ error: data.error_description || data.error }, 400, origin);
 
       return reply({ access_token: data.access_token }, 200, origin);
     }

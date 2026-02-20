@@ -1,9 +1,9 @@
-// src/core/database.js — Read/write JSON files on GitHub as tables
+// src/core/database.js — Baca/tulis file JSON di GitHub sebagai tabel
 
 export class GithubDatabase {
   constructor(config, token) {
-    this.config = config;
-    this._token = token;
+    this.config  = config;
+    this._token  = token;
   }
 
   _base() {
@@ -13,44 +13,51 @@ export class GithubDatabase {
 
   _headers(extra = {}) {
     return {
-      Authorization: `Bearer ${this._token}`,
-      Accept: 'application/vnd.github+json',
+      Authorization:  `Bearer ${this._token}`,
+      Accept:         'application/vnd.github+json',
       'Content-Type': 'application/json',
       ...extra,
     };
   }
 
-  // ── Read ──────────────────────────────────────────────────────
+  // ── Read ──────────────────────────────────────────────────────────────────
+
   async read(filePath) {
     const res = await fetch(`${this._base()}/${filePath}`, { headers: this._headers() });
+
     if (res.status === 404) return { data: [], sha: null };
-    if (!res.ok) throw new Error(`Gagal membaca ${filePath} (${res.status})`);
+    if (!res.ok) throw new Error(`Gagal membaca ${filePath} (HTTP ${res.status})`);
 
     const raw  = await res.json();
     const data = JSON.parse(atob(raw.content.replace(/\n/g, '')));
     return { data: Array.isArray(data) ? data : [], sha: raw.sha };
   }
 
-  // ── Write ─────────────────────────────────────────────────────
-  async write(filePath, data, sha, message) {
+  // ── Write ─────────────────────────────────────────────────────────────────
+
+  async write(filePath, data, sha, commitMessage) {
+    // btoa tidak support karakter non-latin, gunakan encodeURIComponent + unescape
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-    const body    = { message, content };
-    if (sha) body.sha = sha;
+    const body    = { message: commitMessage, content };
+    if (sha) body.sha = sha;  // wajib ada saat update file yang sudah ada
 
     const res = await fetch(`${this._base()}/${filePath}`, {
       method:  'PUT',
       headers: this._headers(),
       body:    JSON.stringify(body),
     });
+
     if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.message || `Gagal menyimpan ${filePath}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Gagal menyimpan ${filePath}`);
     }
+
     const result = await res.json();
-    return result.content.sha;
+    return result.content.sha;  // SHA baru setelah commit
   }
 
-  // ── Collection shortcuts ──────────────────────────────────────
+  // ── Collection shortcuts ──────────────────────────────────────────────────
+
   async getAll(collection) {
     return this.read(collection.file);
   }
@@ -58,10 +65,10 @@ export class GithubDatabase {
   async insert(collection, record, userLogin) {
     const { data, sha } = await this.read(collection.file);
 
-    // Auto-increment id
+    // Auto-increment: cari nilai id tertinggi + 1
     const autoField = collection.schema?.find(f => f.auto);
     if (autoField) {
-      record[autoField.key] = data.reduce((m, r) => Math.max(m, Number(r[autoField.key]) || 0), 0) + 1;
+      record[autoField.key] = data.reduce((max, r) => Math.max(max, Number(r[autoField.key]) || 0), 0) + 1;
     }
 
     if (collection.timestamps) {
@@ -81,6 +88,7 @@ export class GithubDatabase {
     const { data, sha } = await this.read(collection.file);
     const idKey = collection.schema?.find(f => f.auto)?.key || 'id';
     const idx   = data.findIndex(r => String(r[idKey]) === String(id));
+
     if (idx === -1) throw new Error(`Record dengan id=${id} tidak ditemukan.`);
 
     if (collection.timestamps) patch.updatedAt = new Date().toISOString();
@@ -97,6 +105,7 @@ export class GithubDatabase {
     const { data, sha } = await this.read(collection.file);
     const idKey    = collection.schema?.find(f => f.auto)?.key || 'id';
     const filtered = data.filter(r => String(r[idKey]) !== String(id));
+
     if (filtered.length === data.length) throw new Error(`Record dengan id=${id} tidak ditemukan.`);
 
     const newSha = await this.write(
@@ -106,7 +115,8 @@ export class GithubDatabase {
     return { sha: newSha };
   }
 
-  // ── Query ─────────────────────────────────────────────────────
+  // ── Query dengan filter, sort, paginasi ──────────────────────────────────
+
   async query(collection, { filter, sort, order = 'asc', limit, offset = 0 } = {}) {
     const { data } = await this.read(collection.file);
     let rows = [...data];
@@ -116,10 +126,11 @@ export class GithubDatabase {
         Object.entries(filter).every(([k, v]) => String(r[k]) === String(v))
       );
     }
+
     if (sort) {
       rows.sort((a, b) => {
-        const c = String(a[sort] ?? '').localeCompare(String(b[sort] ?? ''), undefined, { numeric: true });
-        return order === 'desc' ? -c : c;
+        const cmp = String(a[sort] ?? '').localeCompare(String(b[sort] ?? ''), undefined, { numeric: true });
+        return order === 'desc' ? -cmp : cmp;
       });
     }
 

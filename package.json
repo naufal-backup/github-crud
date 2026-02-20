@@ -1,7 +1,7 @@
 {
   "name": "github-crud",
   "version": "1.0.0",
-  "description": "Turn any GitHub repo into a zero-backend JSON database with a full CRUD UI. Auth, storage, roles, and table editor — no server needed.",
+  "description": "Turn any GitHub repo into a zero-backend JSON database with a full CRUD UI.",
   "type": "module",
   "main": "./dist/github-crud.umd.cjs",
   "module": "./dist/github-crud.es.js",
@@ -12,38 +12,21 @@
     },
     "./style": "./dist/github-crud.css"
   },
-  "files": [
-    "dist",
-    "src",
-    "README.md"
-  ],
+  "files": ["dist", "src", "README.md"],
   "scripts": {
-    "build": "node build.js",
-    "dev": "node build.js --watch",
+    "build":          "node build.js",
+    "dev":            "node build.js --watch",
     "prepublishOnly": "npm run build"
   },
-  "keywords": [
-    "github",
-    "crud",
-    "json",
-    "cms",
-    "admin",
-    "database",
-    "github-pages",
-    "no-backend",
-    "zero-backend",
-    "cloudflare-workers"
-  ],
+  "keywords": ["github", "crud", "json", "cms", "admin", "database", "github-pages", "no-backend"],
   "author": "github-crud contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/github-crud/github-crud.git"
+    "url":  "https://github.com/github-crud/github-crud.git"
   },
   "homepage": "https://github.com/github-crud/github-crud#readme",
-  "bugs": {
-    "url": "https://github.com/github-crud/github-crud/issues"
-  },
+  "bugs": { "url": "https://github.com/github-crud/github-crud/issues" },
   "devDependencies": {
     "esbuild": "^0.20.0"
   }
